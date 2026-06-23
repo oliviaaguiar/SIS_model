@@ -11,10 +11,14 @@ knitr::opts_chunk$set(echo = TRUE)
 X <- array(0, dim = c(24))
 #declare an array with 52 birth rates, hibernation rate, emergence rate
 
-b1 <- array(0, dim = c(52))
-b2 <- array(0, dim = c(52))
-h <- array(0, dim = c(52))
-e <- array(0, dim = c(52))
+b1 <- array(0, dim = c(52)) #yearling birth rate per week
+b2 <- array(0, dim = c(52)) #adult birth rate per week
+h <- array(0, dim = c(52)) #weekly rate of entering hibernation
+h[43] = 0.3 #this means that 30% of active bats in week 43 will enter hibernation by week 44
+h[44] = 0.3 
+h[45] = 0.3
+h[46] = 1 #fraction is 1 in the final week so all of the remaining active bats enter hibernation
+e <- array(0, dim = c(52)) #weekly rate of exiting hibernation
 
 #populate array with random numbers between 1 and 100
 X <- sample(1:100, 24, replace = TRUE)
@@ -45,7 +49,7 @@ X <- sample(1:100, 24, replace = TRUE)
 #[24] is I(2,f,a)
 
 #create a function called iterate1weekforward, that progresses state variables from a dynamical system forward one week, given a set of parameters
-iterate1weekforward <- function(parameters, state) {
+iterate1weekforward <- function(parameters, state, t) {
   #unpack parameters
   b1 <- parameters[1]
   b2 <- parameters[2]
@@ -58,9 +62,11 @@ iterate1weekforward <- function(parameters, state) {
   beta <- parameters[9]
   v <- parameters[10]
   r <- parameters[11]
-  h <- parameters[12]
+#  h <- parameters[12]
   e <- parameters[13]
   alpha <- parameters[14]
+
+  w = t%%52+1 #have to add one bc R indexes starting at 1, not 0
   
   #unpack state variables
   S_0ma <- X[1]
@@ -89,30 +95,30 @@ iterate1weekforward <- function(parameters, state) {
   I_2fa <- X[24]
   
   X2 <- array(0, dim = c(24))
-  X2[1] <- ((b1/2) * (S_1fa + alpha*I_1fa)) + ((b2/2) * (S_2fa + alpha*I_2fa)) + ((1-h)*(1-mu_0a)*S_0ma)
-  X2[2] <- (1-mu_0h)*S_0mh +(h*(1-mu_0a)*S_0ma) - beta * S_0mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[3] <- e*(1-mu_0h)*S_1mh + (1-v)*(1-mu_0a)*r*I_0ma + (1-h)*(1-mu_1a)*S_1ma
-  X2[4] <- (1-mu_1h)*S_1mh + h*(1-mu_1a)*S_1ma - beta * S_1mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[5] <- e*(1-mu_1h)*S_1mh + (1-v)*r*I_1ma + (1-h)*(1-mu_2a)*S_2ma
-  X2[6] <- (1-mu_2h)*S_2mh + h*(1-mu_2a)*S_2ma - beta * S_2mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[1] <- ((b1[w]/2) * (S_1fa + alpha*I_1fa)) + ((b2[w]/2) * (S_2fa + alpha*I_2fa)) + ((1-h[w])*(1-mu_0a)*S_0ma)
+  X2[2] <- (1-mu_0h)*S_0mh +(h[w]*(1-mu_0a)*S_0ma) - beta * S_0mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[3] <- e[w]*(1-mu_0h)*S_1mh + (1-v)*(1-mu_0a)*r*I_0ma + (1-h[w])*(1-mu_1a)*S_1ma
+  X2[4] <- (1-mu_1h)*S_1mh + h[w]*(1-mu_1a)*S_1ma - beta * S_1mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[5] <- e[w]*(1-mu_1h)*S_1mh + (1-v)*r*I_1ma + (1-h[w])*(1-mu_2a)*S_2ma
+  X2[6] <- (1-mu_2h)*S_2mh + h[w]*(1-mu_2a)*S_2ma - beta * S_2mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[7] <- (1-v)*(1-mu_0h)*I_0mh + beta*S_0mh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[8] <- (1-v)*(1-mu_0a)*I_0ma + (1-v)*(1-mu_0h)*e*I_0mh
+  X2[8] <- (1-v)*(1-mu_0a)*I_0ma + (1-v)*(1-mu_0h)*e[w]*I_0mh
   X2[9] <- (1-v)*(1-mu_1h)*I_1mh + beta*S_1mh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[10] <- (1-v)*(1-mu_1a)*I_1ma + (1-v)*(1-mu_1h)*e*I_1mh
+  X2[10] <- (1-v)*(1-mu_1a)*I_1ma + (1-v)*(1-mu_1h)*e[w]*I_1mh
   X2[11] <- (1-v)(1-mu_2h)*I_2mh + beta*S_2mh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[12] <- (1-v)*(1-mu_2a)*I_2ma + (1-v)*(1-mu_2h)*e*I_2mh
-  X2[13] <- ((b1/2) * (S_1fa + alpha*I_1fa)) + ((b2/2) * (S_2fa + alpha*I_2fa)) + ((1-h)*(1-mu_0a)*S_0fa)
-  X2[14] <- (1-mu_0h)*S_0fh +(h*(1-mu_0a)*S_0fa) - beta * S_0fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[15] <- e*(1-mu_0h)*S_1fh + (1-v)*(1-mu_0a)*r*I_0fa + (1-h)*(1-mu_1a)*S_1fa
-  X2[16] <- (1-mu_1h)*S_1fh + h*(1-mu_1a)*S_1fa - beta * S_1fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[17] <- e*(1-mu_1h)*S_1fh + (1-v)*r*I_1fa + (1-h)*(1-mu_2a)*S_2fa
-  X2[18] <- (1-mu_2h)*S_2fh + h*(1-mu_2a)*S_2fa - beta * S_2fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[12] <- (1-v)*(1-mu_2a)*I_2ma + (1-v)*(1-mu_2h)*e[w]*I_2mh
+  X2[13] <- ((b1[w]/2) * (S_1fa + alpha*I_1fa)) + ((b2[w]/2) * (S_2fa + alpha*I_2fa)) + ((1-h[w])*(1-mu_0a)*S_0fa)
+  X2[14] <- (1-mu_0h)*S_0fh +(h[w]*(1-mu_0a)*S_0fa) - beta * S_0fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[15] <- e[w]*(1-mu_0h)*S_1fh + (1-v)*(1-mu_0a)*r*I_0fa + (1-h[w])*(1-mu_1a)*S_1fa
+  X2[16] <- (1-mu_1h)*S_1fh + h[w]*(1-mu_1a)*S_1fa - beta * S_1fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[17] <- e[w]*(1-mu_1h)*S_1fh + (1-v)*r*I_1fa + (1-h[w])*(1-mu_2a)*S_2fa
+  X2[18] <- (1-mu_2h)*S_2fh + h[w]*(1-mu_2a)*S_2fa - beta * S_2fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[19] <- (1-v)*(1-mu_0h)*I_0fh + beta*S_0fh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[20] <- (1-v)*(1-mu_0a)*I_0fa + (1-v)*(1-mu_0h)*e*I_0fh
+  X2[20] <- (1-v)*(1-mu_0a)*I_0fa + (1-v)*(1-mu_0h)*e[w]*I_0fh
   X2[21] <- (1-v)*(1-mu_1h)*I_1fh + beta*S_1fh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[22] <- (1-v)*(1-mu_1a)*I_1fa + (1-v)*(1-mu_1h)*e*I_1fh
+  X2[22] <- (1-v)*(1-mu_1a)*I_1fa + (1-v)*(1-mu_1h)*e[w]*I_1fh
   X2[23] <- (1-v)(1-mu_2h)*I_2fh + beta*S_2fh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[24] <- (1-v)*(1-mu_2a)*I_2fa + (1-v)*(1-mu_2h)*e*I_2fh
+  X2[24] <- (1-v)*(1-mu_2a)*I_2fa + (1-v)*(1-mu_2h)*e[w]*I_2fh
 ```
 
 
