@@ -1,0 +1,13 @@
+---
+title: "Model_V.1"
+author: "Olivia Aguiar"
+date: "2026-06-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#this is my first version of an age-structured SIS model that describes white-nose syndrome dynamics
+
+```
+
