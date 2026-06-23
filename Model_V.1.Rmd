@@ -4,10 +4,232 @@ author: "Olivia Aguiar"
 date: "2026-06-23"
 output: html_document
 ---
-
+#chunk for packages
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 #this is my first version of an age-structured SIS model that describes white-nose syndrome dynamics
+library(deSolve)
+```
 
+
+#basic SIS model from github copilot
+```{r}
+# Define the SIS model as a system of ODEs
+SIS_model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dS <- -beta * S * I / N + gamma * I
+    dI <- beta * S * I / N - gamma * I
+    
+    return(list(c(dS, dI)))
+  })
+}
+
+# Parameters
+parameters <- c(beta = 0.3, gamma = 0.1, N = 1000)
+
+# Initial state
+initial_state <- c(S = 990, I = 10)
+
+# Time sequence
+times <- seq(0, 100, by = 0.1)
+
+# Solve ODE
+solution <- ode(y = initial_state, times = times, func = SIS_model, parms = parameters)
+
+# Plot results
+plot(solution[, "time"], solution[, "S"], type = "l", col = "blue", 
+     ylim = c(0, 1000), xlab = "Time (days)", ylab = "Number of individuals",
+     main = "SIS Model (deSolve)", lwd = 2)
+lines(solution[, "time"], solution[, "I"], col = "red", lwd = 2)
+legend("right", legend = c("Susceptible", "Infected"), 
+       col = c("blue", "red"), lty = 1, lwd = 2)
+grid()
+```
+
+
+#now trying to do my own
+```{r}
+#removing sex, birth differences for ages and infection, and hibernation dynamics
+#b is weekly birth rate
+#mu is weekly natural death rate
+#beta is weekly rate of WNS transmission
+#v is virulence, weekly rate of death from infection
+#r is weekly rate of recovery from infection
+
+SIS_model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dS <- ((1 - mu) * S) - (beta * S * I ) + (b * (S+I)) + (r * I)
+    dI <- ((1 - v) * (1 - mu) * I) + (beta * S * I) - (r * I)
+    N_total <- S + I
+    
+    return(list(c(dS, dI), N_total = N_total))
+  })
+}
+
+#start with no births, no natural death, no death from infection
+parameters <- c(mu = 0, beta = 0.3, v = 0, b = 0, r = 0.2)
+
+initial_state <- c(S = 990, I = 10)
+
+times <- seq(0, 100, by = 0.1)
+
+solution <- ode(y = initial_state, times = times, func = SIS_model, parms = parameters)
+
+plot(solution[, "time"], solution[, "S"], type = "l", col = "blue", 
+     ylim = c(0, 1000), xlab = "Time (days)", ylab = "Number of individuals",
+     main = "SIS Model (deSolve)", lwd = 2)
+lines(solution[, "time"], solution[, "I"], col = "red", lwd = 2)
+lines(solution[, "time"], solution[, "N_total"], col = "darkgreen", lwd = 2)
+legend("right", legend = c("Susceptible", "Infected", "Total Population"), 
+       col = c("blue", "red", "darkgreen"), lty = 1, lwd = 2)
+grid()
+```
+
+
+#that didn't work, trying this after edits from copilot
+```{r}
+SIS_model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dS <- ((1 - mu) * S) - (beta * S * I / (S + I)) + (b * (S+I)) + (r * I)
+    dI <- ((1 - v) * (1 - mu) * I) + (beta * S * I / (S + I)) - (r * I)
+    N_total <- S + I
+    
+    return(list(c(dS, dI), N_total = N_total))
+  })
+}
+
+# Set r (recovery rate) to a positive value instead of 0
+parameters <- c(mu = 0, beta = 0.3, v = 0, b = 0, r = 0.15)
+
+initial_state <- c(S = 990, I = 10)
+
+times <- seq(0, 100, by = 0.1)
+
+solution <- ode(y = initial_state, times = times, func = SIS_model, parms = parameters)
+
+plot(solution[, "time"], solution[, "S"], type = "l", col = "blue", 
+     ylim = c(0, 1000), xlab = "Time (days)", ylab = "Number of individuals",
+     main = "SIS Model (deSolve)", lwd = 2)
+lines(solution[, "time"], solution[, "I"], col = "red", lwd = 2)
+lines(solution[, "time"], solution[, "N_total"], col = "darkgreen", lwd = 2)
+legend("right", legend = c("Susceptible", "Infected", "Total Population"), 
+       col = c("blue", "red", "darkgreen"), lty = 1, lwd = 2)
+grid()
+```
+
+
+
+#also didnt work, new code, trying to add just births right now
+```{r}
+SIS_model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    N <- S + I  # Total population
+    
+    dS <- -beta * S * I / N + r * I + b * (S + I)  # Lose to infection, gain from recovery, gain from births to S compartment
+    dI <- beta * S * I / N - r * I                 # Gain from infection, lose to recovery
+    N_total <- S + I
+    
+    return(list(c(dS, dI), N_total = N_total))
+  })
+}
+
+# Parameters
+parameters <- c(beta = 0.3, r = 0.15, b = 0.01)
+
+initial_state <- c(S = 990, I = 10)
+
+times <- seq(0, 100, by = 0.1)
+
+solution <- ode(y = initial_state, times = times, func = SIS_model, parms = parameters)
+
+plot(solution[, "time"], solution[, "S"], type = "l", col = "blue", 
+     ylim = c(0, 1500), xlab = "Time (days)", ylab = "Number of individuals",
+     main = "SIS Model with Births (deSolve)", lwd = 2)
+lines(solution[, "time"], solution[, "I"], col = "red", lwd = 2)
+lines(solution[, "time"], solution[, "N_total"], col = "darkgreen", lwd = 2)
+legend("right", legend = c("Susceptible", "Infected", "Total Population"), 
+       col = c("blue", "red", "darkgreen"), lty = 1, lwd = 2)
+grid()
+#tried this with birth both at 0 and 0.01, and it worked
+```
+
+
+#that did work, now trying to add death from infection
+```{r}
+SIS_model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    N <- S + I  # Total population
+    
+    dS <- -beta * S * I / N + r * I + b * (S + I)  # Lose to infection, gain from recovery, gain from births to S compartment
+    dI <- beta * S * I / N - r * I - v * I         # Gain from infection, lose to recovery, lose to death from infection
+    N_total <- S + I
+    
+    return(list(c(dS, dI), N_total = N_total))
+  })
+}
+
+# Parameters
+parameters <- c(beta = 0.3, r = 0.15, b = 0, v = 0)
+
+initial_state <- c(S = 990, I = 10)
+
+times <- seq(0, 100, by = 0.1)
+
+solution <- ode(y = initial_state, times = times, func = SIS_model, parms = parameters)
+
+plot(solution[, "time"], solution[, "S"], type = "l", col = "blue", 
+     ylim = c(0, 1500), xlab = "Time (days)", ylab = "Number of individuals",
+     main = "SIS Model with Births and Infection Mortality (deSolve)", lwd = 2)
+lines(solution[, "time"], solution[, "I"], col = "red", lwd = 2)
+lines(solution[, "time"], solution[, "N_total"], col = "darkgreen", lwd = 2)
+legend("right", legend = c("Susceptible", "Infected", "Total Population"), 
+       col = c("blue", "red", "darkgreen"), lty = 1, lwd = 2)
+grid()
+
+#tried this model at both v=0 and v=0.1, and it worked
+```
+
+
+#now adding natural death rate
+```{r}
+#b is weekly birth rate
+#mu is weekly natural death rate
+#beta is weekly rate of WNS transmission
+#v is virulence, weekly rate of death from infection
+#r is weekly rate of recovery from infection
+
+SIS_model <- function(t, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    N <- S + I  # Total population
+    
+    dS <- -beta * S * I / N + r * I + b * (S + I) - mu * S  # Lose to infection, gain from recovery, gain from births, lose to natural death
+    dI <- beta * S * I / N - r * I - v * I - mu * I         # Gain from infection, lose to recovery, lose to death from infection, lose to natural death
+    N_total <- S + I
+    
+    return(list(c(dS, dI), N_total = N_total))
+  })
+}
+
+# Parameters
+parameters <- c(beta = 0.3, r = 0.15, b = 0.01, v = 0, mu = 0.01)
+
+initial_state <- c(S = 990, I = 10)
+
+times <- seq(0, 100, by = 0.1)
+
+solution <- ode(y = initial_state, times = times, func = SIS_model, parms = parameters)
+
+plot(solution[, "time"], solution[, "S"], type = "l", col = "blue", 
+     ylim = c(0, 1500), xlab = "Time (days)", ylab = "Number of individuals",
+     main = "SIS Model with Births, Infection Mortality, and Natural Death (deSolve)", lwd = 2)
+lines(solution[, "time"], solution[, "I"], col = "red", lwd = 2)
+lines(solution[, "time"], solution[, "N_total"], col = "darkgreen", lwd = 2)
+legend("right", legend = c("Susceptible", "Infected", "Total Population"), 
+       col = c("blue", "red", "darkgreen"), lty = 1, lwd = 2)
+grid()
+#set b, v, and mu to 0 and population is stable
+#set mu to 0.01 and population declines over time, as expected
+#set births and natural deaths to the same, population stays stable as expected
+#model seems to be working
 ```
 
