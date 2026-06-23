@@ -202,7 +202,7 @@ SIS_model <- function(t, state, parameters) {
   with(as.list(c(state, parameters)), {
     N <- S + I  # Total population
     
-    dS <- -beta * S * I / N + r * I + b * (S + I) - mu * S  # Lose to infection, gain from recovery, gain from births, lose to natural death
+    dS <- -beta * S * I / N + r * I + b - mu * S  # Lose to infection, gain from recovery, gain from births, lose to natural death
     dI <- beta * S * I / N - r * I - v * I - mu * I         # Gain from infection, lose to recovery, lose to death from infection, lose to natural death
     N_total <- S + I
     
@@ -211,16 +211,16 @@ SIS_model <- function(t, state, parameters) {
 }
 
 # Parameters
-parameters <- c(beta = 0.3, r = 0.15, b = 0.01, v = 0, mu = 0.01)
+parameters <- c(beta = 0, r = 0.15, b = 0.15, v = 0, mu = (1/(30*365)))
 
-initial_state <- c(S = 990, I = 10)
+initial_state <- c(S = 1500, I = 100)
 
-times <- seq(0, 100, by = 0.1)
+times <- seq(0, 5000, by = 0.1)
 
 solution <- ode(y = initial_state, times = times, func = SIS_model, parms = parameters)
 
 plot(solution[, "time"], solution[, "S"], type = "l", col = "blue", 
-     ylim = c(0, 1500), xlab = "Time (days)", ylab = "Number of individuals",
+     ylim = c(0, 3000), xlab = "Time (days)", ylab = "Number of individuals",
      main = "SIS Model with Births, Infection Mortality, and Natural Death (deSolve)", lwd = 2)
 lines(solution[, "time"], solution[, "I"], col = "red", lwd = 2)
 lines(solution[, "time"], solution[, "N_total"], col = "darkgreen", lwd = 2)
@@ -231,5 +231,6 @@ grid()
 #set mu to 0.01 and population declines over time, as expected
 #set births and natural deaths to the same, population stays stable as expected
 #model seems to be working
+#changed after to remove (S+I) from birth, so it is linear growth instead of exponential growth
 ```
 

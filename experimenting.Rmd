@@ -1,0 +1,41 @@
+---
+title: "experimenting"
+author: "Olivia Aguiar"
+date: "2026-06-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#declare an array with 24 zeroes
+X <- array(0, dim = c(24))
+#populate array with random numbers between 1 and 100
+X <- sample(1:100, 24, replace = TRUE)
+#indexed starting at 1 in R not starting at 0
+#[1] is S(0,m,a)
+#[2] is S(0,m,h)
+#[3] is S(1,m,a)
+#[4] is S(1,m,h)
+#[5] is S(2,m,a)
+#[6] is S(2,m,h)
+#[7] is I(0,m,h)
+#[8] is I(0,m,a)
+#[9] is I(1,m,h)
+#[10] is I(1,m,a)
+#[11] is I(2,m,h)
+#[12] is I(2,m,a)
+#[13] is S(0,f,a)
+#[14] is S(0,f,h)
+#[15] is S(1,f,a)
+#[16] is S(1,f,h)
+#[17] is S(2,f,a)
+#[18] is S(2,f,h)
+#[19] is I(0,f,h)
+#[20] is I(0,f,a)
+#[21] is I(1,f,h)
+#[22] is I(1,f,a)
+#[23] is I(2,f,h)
+#[24] is I(2,f,a)
+```
+
+
