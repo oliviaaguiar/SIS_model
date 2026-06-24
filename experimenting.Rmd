@@ -24,12 +24,12 @@ beta <- array(0, dim = c(52)) #weekly rate of WNS transmission
 v <- array(0, dim = c(52)) #weekly rate of death from infection
 r <- array(0, dim = c(52)) #weekly rate of recovery from infection
 #I am keeping the natural death rate the same for now
-mu_0a <- array(1/(52*sample(15:30, size = 1)), dim = c(52))
-mu_0h <- array(1/(52*sample(15:30, size = 1)), dim = c(52))
-mu_1a <- array(1/(52*sample(15:30, size = 1)), dim = c(52))
-mu_1h <- array(1/(52*sample(15:30, size = 1)), dim = c(52))
-mu_2a <- array(1/(52*sample(15:30, size = 1)), dim = c(52))
-mu_2h <- array(1/(52*sample(15:30, size = 1)), dim = c(52))
+mu_0a <- array(1/(52*30), dim = c(52))
+mu_0h <- array(1/(52*30), dim = c(52))
+mu_1a <- array(1/(52*30), dim = c(52))
+mu_1h <- array(1/(52*30), dim = c(52))
+mu_2a <- array(1/(52*30), dim = c(52))
+mu_2h <- array(1/(52*30), dim = c(52))
 
 #creating values for hibernation rate array
 h[12] = 1/7
@@ -57,19 +57,19 @@ beta[25] = 0.125
 beta[26] = 1
 
 #adding values for virulence
-v[27] = 1/(13*sample(50:90, size=1))
-v[28] = 1/(13*sample(50:90, size=1))
-v[29] = 1/(13*sample(50:90, size=1))
-v[30] = 1/(13*sample(50:90, size=1))
-v[31] = 1/(13*sample(50:90, size=1))
-v[32] = 1/(13*sample(50:90, size=1))
-v[33] = 1/(13*sample(50:90, size=1))
-v[34] = 1/(13*sample(50:90, size=1))
-v[35] = 1/(13*sample(50:90, size=1))
-v[36] = 1/(13*sample(50:90, size=1))
-v[37] = 1/(13*sample(50:90, size=1))
-v[38] = 1/(13*sample(50:90, size=1))
-v[39] = 1/(13*sample(50:90, size=1))
+v[27] = 0.0885
+v[28] = 0.0885
+v[29] = 0.0885
+v[30] = 0.0885
+v[31] = 0.0885
+v[32] = 0.0885
+v[33] = 0.0885
+v[34] = 0.0885
+v[35] = 0.0885
+v[36] = 0.0885
+v[37] = 0.0885
+v[38] = 0.0885
+v[39] = 0.0885
 
 #adding values for recovery rate
 r[40] = 0.25
@@ -79,25 +79,25 @@ r[43] = 1
 
 #adding values for birth rates
 #I am keeping birth rate the same for now
-b1[44] = 1/(9*sample(70:100, size=1))
-b1[45] = 1/(9*sample(70:100, size=1))
-b1[46] = 1/(9*sample(70:100, size=1))
-b1[47] = 1/(9*sample(70:100, size=1))
-b1[48] = 1/(9*sample(70:100, size=1))
-b1[49] = 1/(9*sample(70:100, size=1))
-b1[50] = 1/(9*sample(70:100, size=1))
-b1[51] = 1/(9*sample(70:100, size=1))
-b1[52] = 1/(9*sample(70:100, size=1))
+b1[44] = 0.19
+b1[45] = 0.19
+b1[46] = 0.19
+b1[47] = 0.19
+b1[48] = 0.19
+b1[49] = 0.19
+b1[50] = 0.19
+b1[51] = 0.19
+b1[52] = 0.19
 
-b2[44] = 1/(9*sample(70:100, size=1))
-b2[45] = 1/(9*sample(70:100, size=1))
-b2[46] = 1/(9*sample(70:100, size=1))
-b2[47] = 1/(9*sample(70:100, size=1))
-b2[48] = 1/(9*sample(70:100, size=1))
-b2[49] = 1/(9*sample(70:100, size=1))
-b2[50] = 1/(9*sample(70:100, size=1))
-b2[51] = 1/(9*sample(70:100, size=1))
-b2[52] = 1/(9*sample(70:100, size=1))
+b2[44] = 0.19
+b2[45] = 0.19
+b2[46] = 0.19
+b2[47] = 0.19
+b2[48] = 0.19
+b2[49] = 0.19
+b2[50] = 0.19
+b2[51] = 0.19
+b2[52] = 0.19
 
 
 
@@ -128,7 +128,6 @@ X <- sample(1:100, 24, replace = TRUE)
 #[22] is I(1,f,a)
 #[23] is I(2,f,h)
 #[24] is I(2,f,a)
-
 
 ```
 
@@ -206,6 +205,23 @@ iterate1weekforward <- function(parameters, state, t) {
   X2[21] <- (1-v)*(1-mu_1h)*I_1fh + beta*S_1fh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[22] <- (1-v)*(1-mu_1a)*I_1fa + (1-v)*(1-mu_1h)*e[w]*I_1fh
   X2[23] <- (1-v)(1-mu_2h)*I_2fh + beta*S_2fh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[24] <- (1-v)*(1-mu_2a)*I_2fa + (1-v)*(1-mu_2h)*e[w]*I_2fh
+  X2[24] <- (1-v)*(1-mu_2a)*I_2fa + (1-v)*(1-mu_2h)*e[w]*I_2fh 
+  # name the entries
+  state_names <- c(
+    "S_0ma","S_0mh","S_1ma","S_1mh","S_2ma","S_2mh",
+    "I_0mh","I_0ma","I_1mh","I_1ma","I_2mh","I_2ma",
+    "S_0fa","S_0fh","S_1fa","S_1fh","S_2fa","S_2fh",
+    "I_0fh","I_0fa","I_1fh","I_1fa","I_2fh","I_2fa"
+  )
+  names(X2) <- state_names
+
+  # return as a named list (each element is a scalar next-state value)
+  result <- as.list(X2)
+
+  # add total population (sum of all next-state variables)
+  result$total_pop <- sum(X2)
+
+  return(result)
+}
 ```
 
