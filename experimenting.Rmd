@@ -8,6 +8,8 @@ output: html_document
 #chunk for setting up parameter arrays and key for state variable arrays
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dde)
+library(tidyverse)
 #declare an array with 24 zeroes
 X <- array(0, dim = c(24))
 #declare an array with 52 birth rates, hibernation rate, emergence rate
@@ -20,7 +22,10 @@ h <- array(0, dim = c(52)) #weekly rate of entering hibernation
 #h[45] = 0.3
 #h[46] = 1 #fraction is 1 in the final week so all of the remaining active bats enter hibernation
 e <- array(0, dim = c(52)) #weekly rate of exiting hibernation
-beta <- array(0, dim = c(52)) #weekly rate of WNS transmission
+
+#changed beta_h to be a constant number, because infection will start happening when individuals enter hibernation 
+beta_h <- array(0.5, dim = c(52)) #weekly rate of WNS transmission
+
 v <- array(0, dim = c(52)) #weekly rate of death from infection
 r <- array(0, dim = c(52)) #weekly rate of recovery from infection
 #I am keeping the natural death rate the same for now
@@ -46,18 +51,9 @@ e[41] = 0.25
 e[42] = 0.25
 e[43] = 1
 
-#adding values for infection transmission
-beta[19] = 0.125
-beta[20] = 0.125
-beta[21] = 0.125
-beta[22] = 0.125
-beta[23] = 0.125
-beta[24] = 0.125
-beta[25] = 0.125
-beta[26] = 1
 
 #adding values for virulence
-v[27] = 0.0885
+v[27] = 0.0885 #this weekly death probability gives a 30% survival after 13 weeks
 v[28] = 0.0885
 v[29] = 0.0885
 v[30] = 0.0885
@@ -79,25 +75,25 @@ r[43] = 1
 
 #adding values for birth rates
 #I am keeping birth rate the same for now
-b1[44] = 0.19
-b1[45] = 0.19
-b1[46] = 0.19
-b1[47] = 0.19
-b1[48] = 0.19
-b1[49] = 0.19
-b1[50] = 0.19
-b1[51] = 0.19
-b1[52] = 0.19
+b1[44] = 0.094
+b1[45] = 0.094
+b1[46] = 0.094
+b1[47] = 0.094
+b1[48] = 0.094
+b1[49] = 0.094
+b1[50] = 0.094
+b1[51] = 0.094
+b1[52] = 0.094
 
-b2[44] = 0.19
-b2[45] = 0.19
-b2[46] = 0.19
-b2[47] = 0.19
-b2[48] = 0.19
-b2[49] = 0.19
-b2[50] = 0.19
-b2[51] = 0.19
-b2[52] = 0.19
+b2[44] = 0.094
+b2[45] = 0.094
+b2[46] = 0.094
+b2[47] = 0.094
+b2[48] = 0.094
+b2[49] = 0.094
+b2[50] = 0.094
+b2[51] = 0.094
+b2[52] = 0.094
 
 
 
@@ -129,6 +125,7 @@ X <- sample(1:100, 24, replace = TRUE)
 #[23] is I(2,f,h)
 #[24] is I(2,f,a)
 
+parameters <- c(b1, b2, mu_0a, mu_0h, mu_1a, mu_1h, mu_2a, mu_2h, beta_h, v, r, h, e, alpha = 1)
 ```
 
 
@@ -136,7 +133,7 @@ X <- sample(1:100, 24, replace = TRUE)
 #chunk for the function itself
 ```{r}
 #create a function called iterate1weekforward, that progresses state variables from a dynamical system forward one week, given a set of parameters
-iterate1weekforward <- function(parameters, state, t) {
+iterate1weekforward <- function(parameters, arrState, t) {
   #unpack parameters
   b1 <- parameters[1]
   b2 <- parameters[2]
@@ -146,7 +143,8 @@ iterate1weekforward <- function(parameters, state, t) {
   mu_1h <- parameters[6]
   mu_2a <- parameters[7]
   mu_2h <- parameters[8]
-  beta <- parameters[9]
+  beta_h <- parameters[9]
+  #search and replace beta to beta_h
   v <- parameters[10]
   r <- parameters[11]
   h <- parameters[12]
@@ -180,48 +178,93 @@ iterate1weekforward <- function(parameters, state, t) {
   I_1fa <- X[22]
   I_2fh <- X[23]
   I_2fa <- X[24]
+  #add here- I_total variable which is the sum of all I classes
+  I_totalh <- I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh
+  I_totala <- I_0ma + I_0fa + I_1ma + I_1fa + I_2ma + I_2fa
+  
   
   X2 <- array(0, dim = c(24))
   X2[1] <- ((b1[w]/2) * (S_1fa + alpha*I_1fa)) + ((b2[w]/2) * (S_2fa + alpha*I_2fa)) + ((1-h[w])*(1-mu_0a)*S_0ma)
-  X2[2] <- (1-mu_0h)*S_0mh +(h[w]*(1-mu_0a)*S_0ma) - beta * S_0mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[2] <- (1-mu_0h)*S_0mh +(h[w]*(1-mu_0a)*S_0ma) - beta_h * S_0mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[3] <- e[w]*(1-mu_0h)*S_1mh + (1-v)*(1-mu_0a)*r*I_0ma + (1-h[w])*(1-mu_1a)*S_1ma
-  X2[4] <- (1-mu_1h)*S_1mh + h[w]*(1-mu_1a)*S_1ma - beta * S_1mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[4] <- (1-mu_1h)*S_1mh + h[w]*(1-mu_1a)*S_1ma - beta_h * S_1mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[5] <- e[w]*(1-mu_1h)*S_1mh + (1-v)*r*I_1ma + (1-h[w])*(1-mu_2a)*S_2ma
-  X2[6] <- (1-mu_2h)*S_2mh + h[w]*(1-mu_2a)*S_2ma - beta * S_2mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[7] <- (1-v)*(1-mu_0h)*I_0mh + beta*S_0mh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[6] <- (1-mu_2h)*S_2mh + h[w]*(1-mu_2a)*S_2ma - beta_h * S_2mh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[7] <- (1-v)*(1-mu_0h)*I_0mh + beta_h*S_0mh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[8] <- (1-v)*(1-mu_0a)*I_0ma + (1-v)*(1-mu_0h)*e[w]*I_0mh
-  X2[9] <- (1-v)*(1-mu_1h)*I_1mh + beta*S_1mh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[9] <- (1-v)*(1-mu_1h)*I_1mh + beta_h*S_1mh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[10] <- (1-v)*(1-mu_1a)*I_1ma + (1-v)*(1-mu_1h)*e[w]*I_1mh
-  X2[11] <- (1-v)(1-mu_2h)*I_2mh + beta*S_2mh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[11] <- (1-v)*(1-mu_2h)*I_2mh + beta_h*S_2mh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[12] <- (1-v)*(1-mu_2a)*I_2ma + (1-v)*(1-mu_2h)*e[w]*I_2mh
   X2[13] <- ((b1[w]/2) * (S_1fa + alpha*I_1fa)) + ((b2[w]/2) * (S_2fa + alpha*I_2fa)) + ((1-h[w])*(1-mu_0a)*S_0fa)
-  X2[14] <- (1-mu_0h)*S_0fh +(h[w]*(1-mu_0a)*S_0fa) - beta * S_0fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[14] <- (1-mu_0h)*S_0fh +(h[w]*(1-mu_0a)*S_0fa) - beta_h * S_0fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[15] <- e[w]*(1-mu_0h)*S_1fh + (1-v)*(1-mu_0a)*r*I_0fa + (1-h[w])*(1-mu_1a)*S_1fa
-  X2[16] <- (1-mu_1h)*S_1fh + h[w]*(1-mu_1a)*S_1fa - beta * S_1fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[16] <- (1-mu_1h)*S_1fh + h[w]*(1-mu_1a)*S_1fa - beta_h * S_1fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[17] <- e[w]*(1-mu_1h)*S_1fh + (1-v)*r*I_1fa + (1-h[w])*(1-mu_2a)*S_2fa
-  X2[18] <- (1-mu_2h)*S_2fh + h[w]*(1-mu_2a)*S_2fa - beta * S_2fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
-  X2[19] <- (1-v)*(1-mu_0h)*I_0fh + beta*S_0fh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[18] <- (1-mu_2h)*S_2fh + h[w]*(1-mu_2a)*S_2fa - beta_h * S_2fh * (I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[19] <- (1-v)*(1-mu_0h)*I_0fh + beta_h*S_0fh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[20] <- (1-v)*(1-mu_0a)*I_0fa + (1-v)*(1-mu_0h)*e[w]*I_0fh
-  X2[21] <- (1-v)*(1-mu_1h)*I_1fh + beta*S_1fh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[21] <- (1-v)*(1-mu_1h)*I_1fh + beta_h*S_1fh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[22] <- (1-v)*(1-mu_1a)*I_1fa + (1-v)*(1-mu_1h)*e[w]*I_1fh
-  X2[23] <- (1-v)(1-mu_2h)*I_2fh + beta*S_2fh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
+  X2[23] <- (1-v)*(1-mu_2h)*I_2fh + beta_h*S_2fh*(I_0mh + I_0fh + I_1mh + I_1fh + I_2mh + I_2fh)
   X2[24] <- (1-v)*(1-mu_2a)*I_2fa + (1-v)*(1-mu_2h)*e[w]*I_2fh 
-  # name the entries
-  state_names <- c(
-    "S_0ma","S_0mh","S_1ma","S_1mh","S_2ma","S_2mh",
-    "I_0mh","I_0ma","I_1mh","I_1ma","I_2mh","I_2ma",
-    "S_0fa","S_0fh","S_1fa","S_1fh","S_2fa","S_2fh",
-    "I_0fh","I_0fa","I_1fh","I_1fa","I_2fh","I_2fa"
-  )
-  names(X2) <- state_names
 
-  # return as a named list (each element is a scalar next-state value)
-  result <- as.list(X2)
-
-  # add total population (sum of all next-state variables)
-  result$total_pop <- sum(X2)
-
-  return(result)
+return (X2)
 }
+
+
+```
+
+
+
+#running the function
+```{r}
+X_initial <- array(0, dim = c(24))
+X_initial[5] <- 100 #initializing S_2ma to 100
+X_initial[17] <- 100 #initializing S_2fh to 100
+X_initial[7] <- 0 #initializing I_0mh to 100
+
+# Matrix to save all 24 state variables through time
+X_history <- matrix(NA,
+                    nrow = length(times),
+                    ncol = 24)
+# Store the initial condition
+X_history[1, ] <- X_initial
+
+
+
+#X_next <- iterate1weekforward(parameters, X_initial, 1)
+#times <- seq(0, 100, by = 1)
+
+#for (t in times) {
+#  X_next <- iterate1weekforward(parameters, X_initial, t)
+#  print(X_next)
+  
+#  X_initial = X_next
+#}
+
+
+
+times <- seq(0, 100, by = 1)
+for(i in 2:length(times)) {
+
+  X_next <- iterate1weekforward(parameters, X_initial, times[i])
+
+  # Save this week's state
+  X_history[i, ] <- X_next
+
+  # Update the state for the next iteration
+  X_initial <- X_next
+}
+
+total_pop <- rowSums(X_history)
+
+plot(times,
+     total_pop,
+     type = "l",
+     lwd = 2,
+     xlab = "Week",
+     ylab = "Total population",
+     main = "Total population through time")
 ```
 
